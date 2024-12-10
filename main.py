@@ -4,10 +4,37 @@ import math
 import random
 import os
 import csv
-
+sys('clear')
+player_x, player_y = 0, 0
+fullscreen = False
 def loadSettings():
     print('Loading settings...')
-fullscreen = False
+    global player_x, player_y, fullscreen
+    settings_path = 'settings.csv'
+    with open(settings_path, mode='r') as file:
+        csv_reader = csv.DictReader(file)
+        settings = []
+        for row in csv_reader:
+            settings.append(row)
+        player_x = float(settings[0]['player_x'])
+        player_y = float(settings[0]['player_y'])
+        fullscreen = bool(int(settings[0]['fullscreen']))
+
+def saveSettings():
+    print('Saving settings...')
+    global player_x, player_y, fullscreen
+    settings_path = 'settings.csv'
+    f = open(settings_path, "w+")
+    f.close()
+    fields = ['player_x', 'player_y', 'fullscreen']
+    with open(settings_path, 'wt') as f:
+        csv_writer = csv.writer(f)
+            
+        csv_writer.writerow(fields)
+        row = [str(player_x), str(player_y), str(int(fullscreen))]
+        csv_writer.writerow(row)
+
+loadSettings()
 
 #Create new window
 os.environ['SDL_VIDEO_WINDOW_POS'] = str(1000) + "," + str(0)
@@ -204,7 +231,7 @@ def loadWorld(name):
         for voxel in world:
             #def __init__(self, x, y, texture, t, o, r):
             v.append(vox(int(voxel['x']), int(voxel['y']), voxel_order[int(voxel['o'])][0], voxel_order[int(voxel['o'])][1], int(voxel['o']), int(voxel['r'])))
-    print('loaded world!')
+    print(f'Loaded \'{WORLDNAME}\'')
     
 def saveWorld(name):
     world_path = 'worlds/' + WORLDNAME + '.csv'
@@ -220,7 +247,7 @@ def saveWorld(name):
             for vox in v:
                 row = [str(vox.x), str(vox.y), str(vox.o), str(vox.r)]
                 csv_writer.writerow(row)
-        print(f'{WORLDNAME} saved')
+        print(f'\'{WORLDNAME}\' saved')
     else:
         #create new
         fields = ['x', 'y', 'o', 'r']
@@ -231,10 +258,10 @@ def saveWorld(name):
             for vox in v:
                 row = [str(vox.x), str(vox.y), str(vox.o), str(vox.r)]
                 csv_writer.writerow(row)
-        print(f'{WORLDNAME} created!')
+        print(f'\'{WORLDNAME}\' created!')
             
 
-panda = player(0, 8, 0, 0, 0, 1)
+panda = player(player_x, player_y, 0, 0, 0, 1)
 pickaxe = tool(-12,-24,0,1, pickaxe_sprite)
 pickaxe_down = pygame.transform.rotate(pickaxe.sprite, 45)
 
@@ -261,6 +288,9 @@ def render():
                 p4 = [x1,y2]
                 quad = [p1,p2,p3,p4]
                 pygame.draw.polygon(screen, voxel.texture, quad)
+        else:
+            if voxel in v:
+                v.remove(voxel)
 
     #draw pickaxe
 
@@ -419,12 +449,20 @@ def drawCurrentMat():
     else:
         currentMat = pygame.Rect(4,4,32,32)
         pygame.draw.rect(screen, voxel_order[material][0], currentMat)
- 
+        
+run = True
+def quitGame():
+    global run, player_x, player_y
+    player_x, player_y = panda.x, panda.y
+    saveWorld(WORLDNAME)
+    saveSettings()
+    run = False
+    pygame.quit()
+    sys.exit()
 initVoxes()
 
 WASD = [0,0,0,0]
 shiftDown = False
-run = True
 while run:
     screen.fill(sky)
     render()
@@ -439,10 +477,7 @@ while run:
     pickaxe_flash = False
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            saveWorld(WORLDNAME)
-            run = False
-            pygame.quit()
-            sys.exit()
+            quitGame()
 
         if pygame.mouse.get_pressed()[0]: #left click
             mouse_pos = pygame.mouse.get_pos()
@@ -468,10 +503,7 @@ while run:
             
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
-                saveWorld(WORLDNAME)
-                run = False
-                pygame.quit()
-                sys.exit()
+                quitGame()
                 
             if event.key == pygame.K_w:  #Camera controls
                 WASD[0] = True
