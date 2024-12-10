@@ -3,7 +3,10 @@ import sys
 import math
 import random
 import os
+import csv
 
+def loadSettings():
+    print('Loading settings...')
 fullscreen = False
 
 #Create new window
@@ -23,6 +26,8 @@ pygame.display.set_caption('Platformer')
 font = pygame.font.Font(None, 16)
 clock = pygame.time.Clock()
 FPS = 60
+
+WORLDNAME = 'Survival'
 
 _cam = [0,0,1]
 null_image = pygame.image.load('textures/null.png')
@@ -156,7 +161,13 @@ def copysign(value): #returns the sign of any number
 
 v = [] #list of all voxels
 def initVoxes():
-    #world generation
+    world_path = 'worlds/' + WORLDNAME + '.csv'
+    if os.path.exists(world_path):
+        loadWorld(WORLDNAME)
+    else:
+        generateWorld()
+
+def generateWorld():
     world_width = 128
     world_height = 16
     a = 1 #rate of change by sin
@@ -179,14 +190,51 @@ def initVoxes():
                 if random.randint(0,64)!=4:
                     v.append(vox(x, y-c, voxel_order[2][0], voxel_order[2][1],2,random.randint(0,3)))
                 else:
-                    v.append(vox(x,y-c, voxel_order[-2][0], voxel_order[-2][1],2,random.randint(0,3)))
+                    v.append(vox(x,y-c, voxel_order[-2][0], voxel_order[-2][1],-1,random.randint(0,3)))
 
-        v.append(vox(x, -world_height - 1, voxel_order[-1][0], voxel_order[-1][1],4,0))
+        v.append(vox(x, -world_height - 1, voxel_order[-1][0], voxel_order[-1][1],3,0))
 
-    v.append(vox(10, 8, voxel_order[3][0], voxel_order[3][1], 3,0))
+def loadWorld(name):
+    world_path = 'worlds/' + WORLDNAME + '.csv'
+    with open(world_path, mode='r') as file:
+        csv_reader = csv.DictReader(file)
+        world = []
+        for row in csv_reader:
+            world.append(row)
+        for voxel in world:
+            #def __init__(self, x, y, texture, t, o, r):
+            v.append(vox(int(voxel['x']), int(voxel['y']), voxel_order[int(voxel['o'])][0], voxel_order[int(voxel['o'])][1], int(voxel['o']), int(voxel['r'])))
+    print('loaded world!')
+    
+def saveWorld(name):
+    world_path = 'worlds/' + WORLDNAME + '.csv'
+    if os.path.exists(world_path):
+        f = open(world_path, "w+")
+        f.close()
+        #create new
+        fields = ['x', 'y', 'o', 'r']
+        with open(world_path, 'wt') as f:
+            csv_writer = csv.writer(f)
+            
+            csv_writer.writerow(fields)
+            for vox in v:
+                row = [str(vox.x), str(vox.y), str(vox.o), str(vox.r)]
+                csv_writer.writerow(row)
+        print(f'{WORLDNAME} saved')
+    else:
+        #create new
+        fields = ['x', 'y', 'o', 'r']
+        with open(world_path, 'wt') as f:
+            csv_writer = csv.writer(f)
+            
+            csv_writer.writerow(fields)
+            for vox in v:
+                row = [str(vox.x), str(vox.y), str(vox.o), str(vox.r)]
+                csv_writer.writerow(row)
+        print(f'{WORLDNAME} created!')
+            
 
-                    
-panda = player(64, 8, 0, 0, 0, 1)
+panda = player(0, 8, 0, 0, 0, 1)
 pickaxe = tool(-12,-24,0,1, pickaxe_sprite)
 pickaxe_down = pygame.transform.rotate(pickaxe.sprite, 45)
 
@@ -391,6 +439,7 @@ while run:
     pickaxe_flash = False
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
+            saveWorld(WORLDNAME)
             run = False
             pygame.quit()
             sys.exit()
@@ -419,6 +468,7 @@ while run:
             
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
+                saveWorld(WORLDNAME)
                 run = False
                 pygame.quit()
                 sys.exit()
